@@ -5,3 +5,8 @@ music21>=9.1.0
 Pillow>=10.0.0
 scipy>=1.11.0
 scikit-image>=0.21.0
+
+# Optional: For PDF support
+# Requires system dependency: poppler-utils (Linux/Mac) or poppler (Windows)
+# Install with: pip install pdf2image
+pdf2image>=1.16.0

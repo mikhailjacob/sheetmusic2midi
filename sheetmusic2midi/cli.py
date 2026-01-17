@@ -28,6 +28,9 @@ Examples:
   # Combine multiple pages into one MIDI file
   sheetmusic2midi --multipage page1.png page2.png page3.png output.mid
 
+  # Convert PDF sheet music to MIDI
+  sheetmusic2midi sheet_music.pdf output.mid
+
   # Save intermediate processing images
   sheetmusic2midi input.png output.mid --save-intermediate
         """
@@ -165,12 +168,22 @@ Examples:
             if output_dir and not os.path.exists(output_dir):
                 os.makedirs(output_dir)
 
-            # Convert
-            converter.convert(
-                input_file,
-                args.output,
-                save_intermediate=args.save_intermediate
-            )
+            # Check if input is a PDF file
+            if input_file.lower().endswith('.pdf'):
+                # Convert PDF
+                print("Detected PDF file, extracting pages...")
+                converter.convert_pdf(
+                    input_file,
+                    args.output,
+                    save_intermediate=args.save_intermediate
+                )
+            else:
+                # Convert single image
+                converter.convert(
+                    input_file,
+                    args.output,
+                    save_intermediate=args.save_intermediate
+                )
 
             return 0
 

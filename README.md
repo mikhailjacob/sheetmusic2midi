@@ -25,6 +25,7 @@ SheetMusic2MIDI is a Python library and command-line tool that automatically con
   - Polyphonic support (multiple simultaneous notes)
   - Rest handling (silent periods)
 - **Batch Processing**: Convert multiple sheet music images at once
+- **Multi-Page Support**: Combine multiple pages into a single continuous MIDI file
 - **CLI and Python API**: Use as a command-line tool or integrate into your Python projects
 - **Debug Mode**: Save intermediate processing steps for analysis
 
@@ -77,6 +78,11 @@ Batch convert all images in a directory:
 sheetmusic2midi --batch input_dir/ output_dir/
 ```
 
+Combine multiple pages into a single MIDI file:
+```bash
+sheetmusic2midi --multipage page1.png page2.png page3.png output.mid
+```
+
 Save intermediate processing images:
 ```bash
 sheetmusic2midi input.png output.mid --save-intermediate
@@ -90,10 +96,14 @@ from sheetmusic2midi import SheetMusicConverter
 # Create converter
 converter = SheetMusicConverter(tempo=120, clef='treble')
 
-# Convert image to MIDI
+# Convert single image to MIDI
 converter.convert('input.png', 'output.mid')
 
-# Batch convert
+# Convert multiple pages to single MIDI file
+pages = ['page1.png', 'page2.png', 'page3.png']
+converter.convert_multipage(pages, 'output.mid')
+
+# Batch convert (separate MIDI for each image)
 converter.batch_convert('input_dir/', 'output_dir/')
 
 # Get processing information
@@ -240,6 +250,23 @@ Convert multiple sheet music images.
 - `file_extensions` (list): Image file extensions to process. Default: ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']
 
 **Returns:** List of paths to generated MIDI files
+
+##### convert_multipage()
+
+```python
+convert_multipage(image_paths, output_midi_path, save_intermediate=False)
+```
+
+Convert multiple pages of sheet music into a single continuous MIDI file.
+
+**Parameters:**
+- `image_paths` (list): List of image paths in order (page 1, page 2, etc.)
+- `output_midi_path` (str): Path for output MIDI file
+- `save_intermediate` (bool): Save intermediate processing images. Default: False
+
+**Returns:** Path to generated MIDI file
+
+**Note:** This method combines multiple pages into one continuous piece of music, as opposed to `batch_convert()` which creates separate MIDI files for each input.
 
 ##### get_processing_info()
 

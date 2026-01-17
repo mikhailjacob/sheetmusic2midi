@@ -310,7 +310,7 @@ python -m pytest tests/test_converter.py
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2 License. See the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -349,7 +349,7 @@ If you use this software in your research, please cite:
 ```
 @software{sheetmusic2midi,
   title = {SheetMusic2MIDI: Optical Music Recognition for Sheet Music to MIDI Conversion},
-  author = {SheetMusic2MIDI Contributors},
+  author = {Mikhail Jacob},
   year = {2026},
   url = {https://github.com/mikhailjacob/sheetmusic2midi}
 }

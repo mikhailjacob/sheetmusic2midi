@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific
+output/
+examples/*.png
+examples/*.mid
+*.mid
+*_preprocessed.png
+*_no_staff.png

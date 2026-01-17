@@ -62,6 +62,32 @@ class TestSymbolDetector(unittest.TestCase):
         from sheetmusic2midi.core import SymbolDetector
         detector = SymbolDetector()
         self.assertEqual(len(detector.symbols), 0)
+        self.assertEqual(len(detector.accidentals), 0)
+        self.assertEqual(len(detector.rests), 0)
+        self.assertIsNotNone(detector.time_signature)
+        self.assertIsNotNone(detector.key_signature)
+
+    def test_time_signature(self):
+        """Test time signature class"""
+        from sheetmusic2midi.core import TimeSignature
+        ts = TimeSignature(3, 4)
+        self.assertEqual(ts.numerator, 3)
+        self.assertEqual(ts.denominator, 4)
+        self.assertEqual(str(ts), "3/4")
+
+    def test_key_signature(self):
+        """Test key signature class"""
+        from sheetmusic2midi.core import KeySignature
+        ks = KeySignature(sharps=2)
+        self.assertEqual(ks.sharps, 2)
+        self.assertEqual(ks.flats, 0)
+
+    def test_accidental_enum(self):
+        """Test accidental enumeration"""
+        from sheetmusic2midi.core import Accidental
+        self.assertEqual(Accidental.SHARP.value, 1)
+        self.assertEqual(Accidental.FLAT.value, -1)
+        self.assertEqual(Accidental.NATURAL.value, 0)
 
 
 class TestMidiGenerator(unittest.TestCase):
@@ -78,10 +104,30 @@ class TestMidiGenerator(unittest.TestCase):
         from sheetmusic2midi.core import MidiGenerator
         generator = MidiGenerator()
 
-        # Test some common notes
+        # Test natural notes
         self.assertEqual(generator.note_name_to_midi('C4'), 60)
         self.assertEqual(generator.note_name_to_midi('A4'), 69)
         self.assertEqual(generator.note_name_to_midi('C5'), 72)
+
+        # Test sharps
+        self.assertEqual(generator.note_name_to_midi('C#4'), 61)
+        self.assertEqual(generator.note_name_to_midi('F#4'), 66)
+
+        # Test flats
+        self.assertEqual(generator.note_name_to_midi('Bb4'), 70)
+        self.assertEqual(generator.note_name_to_midi('Eb4'), 63)
+
+        # Test double accidentals
+        self.assertEqual(generator.note_name_to_midi('C##4'), 62)  # D4
+        self.assertEqual(generator.note_name_to_midi('Dbb4'), 60)  # C4
+
+    def test_midi_generator_with_time_signature(self):
+        """Test MIDI generator accepts time signature"""
+        from sheetmusic2midi.core import MidiGenerator, TimeSignature
+        ts = TimeSignature(3, 4)
+        generator = MidiGenerator(tempo=120, time_signature=ts)
+        self.assertEqual(generator.time_signature.numerator, 3)
+        self.assertEqual(generator.time_signature.denominator, 4)
 
 
 if __name__ == '__main__':

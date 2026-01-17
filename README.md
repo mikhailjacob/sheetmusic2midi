@@ -10,8 +10,20 @@ SheetMusic2MIDI is a Python library and command-line tool that automatically con
 
 - **Image Preprocessing**: Automatic image enhancement, binarization, and deskewing
 - **Staff Detection**: Robust detection of musical staff lines
-- **Symbol Recognition**: Detection and classification of musical notation (notes, rests, etc.)
-- **MIDI Generation**: Conversion to standard MIDI format with customizable tempo
+- **Symbol Recognition**: Detection and classification of musical notation
+  - Notes (whole, half, quarter, eighth, sixteenth)
+  - Rests (whole, half, quarter, eighth)
+  - Accidentals (sharps, flats, naturals)
+  - Beamed notes (eighth note groups)
+- **Music Theory Support**:
+  - Time signature detection (4/4, 3/4, etc.)
+  - Key signature detection (sharps and flats)
+  - Accidental application to pitches
+- **MIDI Generation**: Conversion to standard MIDI format
+  - Customizable tempo
+  - Time signature metadata
+  - Polyphonic support (multiple simultaneous notes)
+  - Rest handling (silent periods)
 - **Batch Processing**: Convert multiple sheet music images at once
 - **CLI and Python API**: Use as a command-line tool or integrate into your Python projects
 - **Debug Mode**: Save intermediate processing steps for analysis
@@ -108,12 +120,17 @@ The conversion process consists of four main stages:
 - Remove staff lines to isolate symbols
 
 ### 3. Symbol Detection and Recognition
+- Detect time signatures (4/4, 3/4, etc.)
+- Detect key signatures (count sharps/flats)
 - Detect note heads using contour analysis
 - Identify note stems (vertical lines)
-- Associate stems with note heads
+- Detect and associate beam lines for eighth notes
+- Associate stems with note heads and beams
 - Determine note durations (whole, half, quarter, eighth, etc.)
-- Calculate pitch based on staff position
-- Recognize other symbols (clefs, rests, accidentals)
+- Detect accidentals (sharps, flats, naturals)
+- Apply accidentals to nearby notes
+- Detect rests (whole, half, quarter, eighth)
+- Calculate pitch based on staff position and accidentals
 
 ### 4. MIDI Generation
 - Convert recognized symbols to MIDI events
@@ -124,34 +141,49 @@ The conversion process consists of four main stages:
 ## Supported Features
 
 ### Currently Supported
-- Treble and bass clefs
-- Note heads (filled and hollow)
-- Note stems
-- Basic note durations (whole, half, quarter, eighth)
-- Staff line detection
-- Simple monophonic and polyphonic music
+- **Clefs**: Treble and bass clefs
+- **Notes**: Note heads (filled and hollow), note stems
+- **Durations**: Whole, half, quarter, eighth, sixteenth notes
+- **Rests**: Whole rest, half rest, quarter rest, eighth rest
+- **Accidentals**: Sharps (#), flats (b), naturals
+- **Time Signatures**: 4/4, 3/4, and other common time signatures
+- **Key Signatures**: Detection of sharps and flats in key signature
+- **Beamed Notes**: Eighth note groups connected by beams
+- **Staff Detection**: Robust 5-line staff detection
+- **Polyphonic Music**: Multiple simultaneous notes (chords)
 
 ### Planned Features
-- Time signatures and key signatures
-- Sharps, flats, and naturals
-- Rests and articulation marks
-- Beamed notes
-- Chords and complex rhythms
+- Articulation marks (staccato, accent, etc.)
+- Dynamics (forte, piano, etc.)
+- Ties and slurs
+- Dotted notes
+- Triplets and other tuplets
 - Multiple voices per staff
 - Improved symbol recognition using machine learning
+- Support for grand staff (piano music)
 
 ## Examples
 
 ### Generate Test Images
 
-The repository includes a script to generate synthetic sheet music for testing:
+The repository includes scripts to generate synthetic sheet music for testing:
 
+**Basic test images:**
 ```bash
-cd examples
-python generate_test_image.py
+python examples/generate_test_image.py
 ```
 
-This creates sample sheet music images with staff lines and notes.
+**Advanced test images (with accidentals, rests, beams):**
+```bash
+python examples/generate_advanced_test_images.py
+```
+
+These create sample sheet music images including:
+- Simple scales with staff lines and notes
+- Notes with sharps, flats, and naturals
+- Various rest symbols
+- Beamed eighth note groups
+- Comprehensive tests with all features
 
 ### Example Usage Script
 
@@ -224,14 +256,25 @@ Get information about the last conversion.
 ```
 sheetmusic2midi/
 ├── core/
-│   ├── image_processor.py    # Image preprocessing
-│   ├── staff_detector.py     # Staff line detection
-│   ├── symbol_detector.py    # Symbol recognition
-│   └── midi_generator.py     # MIDI file generation
+│   ├── image_processor.py    # Image preprocessing & binarization
+│   ├── staff_detector.py     # Staff line detection & removal
+│   ├── symbol_detector.py    # Symbol recognition (notes, rests, accidentals, beams)
+│   └── midi_generator.py     # MIDI file generation with time signatures
 ├── utils/                     # Utility functions
-├── converter.py               # Main converter class
-└── cli.py                     # Command-line interface
+├── converter.py               # Main converter orchestrating the pipeline
+├── cli.py                     # Command-line interface
+├── examples/                  # Example scripts and test image generators
+└── tests/                     # Unit tests
 ```
+
+### Key Classes and Enums
+
+- **SymbolType**: Enum for all musical symbols (notes, rests, accidentals, etc.)
+- **NoteDuration**: Enum for note durations (whole, half, quarter, eighth, sixteenth)
+- **Accidental**: Enum for accidentals (sharp, flat, natural, double sharp/flat)
+- **TimeSignature**: Class representing time signatures (e.g., 4/4, 3/4)
+- **KeySignature**: Class representing key signatures (sharps and flats)
+- **MusicalSymbol**: Dataclass representing a detected musical symbol with all attributes
 
 ## Limitations
 

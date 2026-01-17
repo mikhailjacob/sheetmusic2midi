@@ -3,30 +3,33 @@
 import mido
 from mido import MidiFile, MidiTrack, Message, MetaMessage
 from typing import List, Optional
-from .symbol_detector import MusicalSymbol, NoteDuration, SymbolType
+from .symbol_detector import MusicalSymbol, NoteDuration, SymbolType, TimeSignature
 
 
 class MidiGenerator:
     """Generates MIDI files from detected musical symbols"""
 
-    def __init__(self, tempo: int = 120, ticks_per_beat: int = 480):
+    def __init__(self, tempo: int = 120, ticks_per_beat: int = 480,
+                 time_signature: Optional[TimeSignature] = None):
         """
         Initialize MIDI generator
 
         Args:
             tempo: Tempo in BPM (beats per minute)
             ticks_per_beat: MIDI ticks per quarter note
+            time_signature: Time signature (default 4/4)
         """
         self.tempo = tempo
         self.ticks_per_beat = ticks_per_beat
+        self.time_signature = time_signature or TimeSignature(4, 4)
         self.midi_file = None
 
     def note_name_to_midi(self, note_name: str) -> int:
         """
-        Convert note name (e.g., 'C4', 'G#5') to MIDI note number
+        Convert note name (e.g., 'C4', 'G#5', 'Bb3') to MIDI note number
 
         Args:
-            note_name: Note name with octave
+            note_name: Note name with octave (supports #, b, ##, bb)
 
         Returns:
             MIDI note number (0-127)
@@ -34,21 +37,33 @@ class MidiGenerator:
         if not note_name or len(note_name) < 2:
             return 60  # Default to C4
 
-        # Parse note name
-        note = note_name[:-1]  # Everything except last char
+        # Parse note name and octave
+        # Extract octave (last character)
         try:
             octave = int(note_name[-1])
+            note = note_name[:-1]
         except ValueError:
             octave = 4
+            note = note_name
 
-        # Map note names to semitones
-        note_map = {
-            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
-            'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8,
-            'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
-        }
+        # Base note to semitone mapping
+        base_notes = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
 
-        semitone = note_map.get(note, 0)
+        # Get base note
+        base_note = note[0].upper()
+        if base_note not in base_notes:
+            return 60  # Default
+
+        semitone = base_notes[base_note]
+
+        # Apply accidentals
+        accidental_part = note[1:]
+        if '#' in accidental_part:
+            semitone += accidental_part.count('#')
+        if 'b' in accidental_part:
+            semitone -= accidental_part.count('b')
+
+        # Calculate MIDI number
         midi_number = (octave + 1) * 12 + semitone
 
         # Clamp to valid MIDI range
@@ -156,56 +171,86 @@ class MidiGenerator:
         # Add metadata
         track.append(MetaMessage('track_name', name='Sheet Music Track', time=0))
         track.append(MetaMessage('set_tempo', tempo=mido.bpm2tempo(self.tempo), time=0))
+
+        # Add time signature
+        track.append(MetaMessage(
+            'time_signature',
+            numerator=self.time_signature.numerator,
+            denominator=self.time_signature.denominator,
+            time=0
+        ))
+
         track.append(Message('program_change', program=instrument, time=0))
 
-        # Filter and sort notes
-        notes = [s for s in symbols if s.pitch is not None]
-        notes.sort(key=lambda n: n.x)
+        # Separate notes and rests, keep all in chronological order
+        musical_events = []
+        for s in symbols:
+            if s.pitch is not None:
+                musical_events.append(('note', s))
+            elif s.symbol_type in [SymbolType.WHOLE_REST, SymbolType.HALF_REST,
+                                   SymbolType.QUARTER_REST, SymbolType.EIGHTH_REST]:
+                musical_events.append(('rest', s))
 
-        if not notes:
+        # Sort by x position
+        musical_events.sort(key=lambda e: e[1].x)
+
+        if not musical_events:
             # Empty track
             track.append(MetaMessage('end_of_track', time=0))
             self.midi_file.save(output_path)
             return self.midi_file
 
-        # Group notes that occur at similar x positions (chords)
-        note_groups = []
-        current_group = [notes[0]]
+        # Group notes/rests that occur at similar x positions
+        event_groups = []
+        current_group = [musical_events[0]]
 
-        for note in notes[1:]:
-            if note.x - current_group[0].x <= time_threshold:
-                current_group.append(note)
+        for event in musical_events[1:]:
+            if event[1].x - current_group[0][1].x <= time_threshold:
+                current_group.append(event)
             else:
-                note_groups.append(current_group)
-                current_group = [note]
+                event_groups.append(current_group)
+                current_group = [event]
 
-        note_groups.append(current_group)
+        event_groups.append(current_group)
 
-        # Convert grouped notes to MIDI
-        for group in note_groups:
-            # All notes in group start at the same time
-            for note in group:
-                midi_note = self.note_name_to_midi(note.pitch)
-                track.append(Message('note_on', note=midi_note, velocity=64, time=0))
+        # Convert grouped events to MIDI
+        for group in event_groups:
+            notes_in_group = [e[1] for e in group if e[0] == 'note']
+            rests_in_group = [e[1] for e in group if e[0] == 'rest']
 
-            # Find the maximum duration in the group
-            max_duration = max(
-                self.duration_to_ticks(note.note_duration) for note in group
-            )
+            if notes_in_group:
+                # All notes in group start at the same time
+                for note in notes_in_group:
+                    midi_note = self.note_name_to_midi(note.pitch)
+                    track.append(Message('note_on', note=midi_note, velocity=64, time=0))
 
-            # Turn off all notes after the maximum duration
-            for note in group:
-                midi_note = self.note_name_to_midi(note.pitch)
-                track.append(Message('note_off', note=midi_note, velocity=64, time=0))
+                # Find the maximum duration in the group
+                max_duration = max(
+                    self.duration_to_ticks(note.note_duration) for note in notes_in_group
+                )
 
-            # Advance time by the duration
-            # We need to subtract the duration from the first note_off
-            if track:
+                # Turn off all notes after the maximum duration
+                for note in notes_in_group:
+                    midi_note = self.note_name_to_midi(note.pitch)
+                    track.append(Message('note_off', note=midi_note, velocity=64, time=0))
+
                 # Set the time on the first note_off in this group
-                for i in range(len(track) - len(group), len(track)):
+                for i in range(len(track) - len(notes_in_group), len(track)):
                     if track[i].type == 'note_off':
                         track[i].time = max_duration
                         break
+
+            elif rests_in_group:
+                # Rest: just advance time with no notes playing
+                rest = rests_in_group[0]  # Take first rest if multiple
+                rest_duration = self.duration_to_ticks(rest.note_duration)
+
+                # Add a rest by inserting silent time
+                # We do this by adding a dummy note_on with time offset
+                # or by using a marker message
+                if len(track) > 0:
+                    # Add time to the last message
+                    track[-1].time += rest_duration
 
         # End of track
         track.append(MetaMessage('end_of_track', time=0))

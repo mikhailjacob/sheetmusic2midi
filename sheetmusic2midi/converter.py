@@ -91,6 +91,8 @@ class SheetMusicConverter:
 
         # Step 4: Generate MIDI file
         print("\n[4/4] Generating MIDI file...")
+        # Update MIDI generator with detected time signature
+        self.midi_generator.time_signature = self.symbol_detector.time_signature
         self.midi_generator.symbols_to_midi_polyphonic(symbols, output_midi_path)
 
         # Print summary

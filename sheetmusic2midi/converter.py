@@ -156,6 +156,105 @@ class SheetMusicConverter:
 
         return output_files
 
+    def convert_multipage(self, image_paths: List[str], output_midi_path: str,
+                         save_intermediate: bool = False) -> str:
+        """
+        Convert multiple pages of sheet music into a single MIDI file
+
+        Args:
+            image_paths: List of image paths in order (page 1, page 2, etc.)
+            output_midi_path: Path where combined MIDI file will be saved
+            save_intermediate: Whether to save intermediate processing images
+
+        Returns:
+            Path to generated MIDI file
+        """
+        print(f"Converting {len(image_paths)} page(s) to single MIDI file...")
+
+        all_symbols = []
+        total_staves = 0
+
+        # Process each page
+        for page_num, image_path in enumerate(image_paths, 1):
+            print(f"\n{'='*60}")
+            print(f"Processing page {page_num}/{len(image_paths)}: {os.path.basename(image_path)}")
+            print('='*60)
+
+            # Step 1: Preprocess image
+            print(f"\n[Page {page_num}] Preprocessing image...")
+            binary_image = self.image_processor.full_preprocessing_pipeline(image_path)
+
+            if save_intermediate:
+                self._save_intermediate_image(
+                    binary_image,
+                    output_midi_path,
+                    f"_page{page_num}_preprocessed.png"
+                )
+
+            # Step 2: Detect staff lines
+            print(f"\n[Page {page_num}] Detecting staff lines...")
+            staves = self.staff_detector.detect_staves(binary_image)
+
+            if not staves:
+                print(f"Warning: No staff lines detected on page {page_num}")
+
+            total_staves += len(staves)
+
+            # Remove staff lines
+            image_no_staff = self.staff_detector.remove_staff_lines(binary_image)
+
+            if save_intermediate:
+                self._save_intermediate_image(
+                    image_no_staff,
+                    output_midi_path,
+                    f"_page{page_num}_no_staff.png"
+                )
+
+            # Step 3: Detect symbols
+            print(f"\n[Page {page_num}] Detecting musical symbols...")
+            page_symbols = self.symbol_detector.detect_symbols(
+                binary_image,
+                image_no_staff,
+                clef=self.clef
+            )
+
+            if page_symbols:
+                # Offset symbol x-positions to account for page order
+                # Add spacing between pages (equivalent to 2 measures)
+                page_offset = page_num * 2000  # Arbitrary spacing in pixels
+
+                for symbol in page_symbols:
+                    symbol.x += page_offset
+
+                all_symbols.extend(page_symbols)
+                print(f"  Added {len(page_symbols)} symbols from page {page_num}")
+            else:
+                print(f"  Warning: No symbols detected on page {page_num}")
+
+        # Step 4: Generate combined MIDI file
+        print(f"\n{'='*60}")
+        print("Generating combined MIDI file from all pages...")
+        print('='*60)
+
+        if not all_symbols:
+            print("Warning: No musical symbols detected across all pages.")
+            # Create empty MIDI file
+            self.midi_generator.symbols_to_midi([], output_midi_path)
+            return output_midi_path
+
+        # Update MIDI generator with time signature from first page
+        self.midi_generator.time_signature = self.symbol_detector.time_signature
+        self.midi_generator.symbols_to_midi_polyphonic(all_symbols, output_midi_path)
+
+        # Print summary
+        print(f"\n✓ Multi-page conversion complete!")
+        print(f"  Pages processed: {len(image_paths)}")
+        print(f"  Total staves: {total_staves}")
+        print(f"  Total symbols: {len(all_symbols)}")
+        print(f"  Output: {output_midi_path}")
+
+        return output_midi_path
+
     def _save_intermediate_image(self, image, output_midi_path: str, suffix: str):
         """Save intermediate processing image for debugging"""
         import cv2

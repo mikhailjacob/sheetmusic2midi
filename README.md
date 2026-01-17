@@ -26,6 +26,7 @@ SheetMusic2MIDI is a Python library and command-line tool that automatically con
   - Rest handling (silent periods)
 - **Batch Processing**: Convert multiple sheet music images at once
 - **Multi-Page Support**: Combine multiple pages into a single continuous MIDI file
+- **PDF Support**: Directly convert PDF files containing sheet music
 - **CLI and Python API**: Use as a command-line tool or integrate into your Python projects
 - **Debug Mode**: Save intermediate processing steps for analysis
 
@@ -53,6 +54,26 @@ Required packages:
 - Pillow >= 10.0.0
 - scipy >= 1.11.0
 - scikit-image >= 0.21.0
+
+Optional (for PDF support):
+- pdf2image >= 1.16.0
+- poppler-utils (system dependency)
+
+**Installing PDF support:**
+```bash
+# Install Python package
+pip install pdf2image
+
+# Install poppler (required by pdf2image)
+# On Ubuntu/Debian:
+sudo apt-get install poppler-utils
+
+# On macOS:
+brew install poppler
+
+# On Windows:
+# Download from: https://github.com/oschwartz10612/poppler-windows/releases/
+```
 
 ## Quick Start
 
@@ -83,6 +104,11 @@ Combine multiple pages into a single MIDI file:
 sheetmusic2midi --multipage page1.png page2.png page3.png output.mid
 ```
 
+Convert PDF sheet music:
+```bash
+sheetmusic2midi sheet_music.pdf output.mid
+```
+
 Save intermediate processing images:
 ```bash
 sheetmusic2midi input.png output.mid --save-intermediate
@@ -102,6 +128,9 @@ converter.convert('input.png', 'output.mid')
 # Convert multiple pages to single MIDI file
 pages = ['page1.png', 'page2.png', 'page3.png']
 converter.convert_multipage(pages, 'output.mid')
+
+# Convert PDF to MIDI
+converter.convert_pdf('sheet_music.pdf', 'output.mid')
 
 # Batch convert (separate MIDI for each image)
 converter.batch_convert('input_dir/', 'output_dir/')
@@ -267,6 +296,27 @@ Convert multiple pages of sheet music into a single continuous MIDI file.
 **Returns:** Path to generated MIDI file
 
 **Note:** This method combines multiple pages into one continuous piece of music, as opposed to `batch_convert()` which creates separate MIDI files for each input.
+
+##### convert_pdf()
+
+```python
+convert_pdf(pdf_path, output_midi_path, dpi=300, save_intermediate=False, cleanup_temp=True)
+```
+
+Convert a PDF file of sheet music into a MIDI file.
+
+**Parameters:**
+- `pdf_path` (str): Path to PDF file
+- `output_midi_path` (str): Path for output MIDI file
+- `dpi` (int): Resolution for PDF to image conversion. Default: 300
+- `save_intermediate` (bool): Save intermediate processing images. Default: False
+- `cleanup_temp` (bool): Delete temporary image files after conversion. Default: True
+
+**Returns:** Path to generated MIDI file
+
+**Requirements:** Requires `pdf2image` package and `poppler` system dependency.
+
+**Note:** This method extracts all pages from the PDF as images, then uses `convert_multipage()` to process them into a single MIDI file.
 
 ##### get_processing_info()
 

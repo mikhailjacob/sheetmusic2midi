@@ -255,6 +255,58 @@ class SheetMusicConverter:
 
         return output_midi_path
 
+    def convert_pdf(self, pdf_path: str, output_midi_path: str,
+                   dpi: int = 300, save_intermediate: bool = False,
+                   cleanup_temp: bool = True) -> str:
+        """
+        Convert a PDF of sheet music to MIDI file
+
+        Args:
+            pdf_path: Path to PDF file containing sheet music
+            output_midi_path: Path where MIDI file will be saved
+            dpi: Resolution for PDF to image conversion (default 300)
+            save_intermediate: Whether to save intermediate processing images
+            cleanup_temp: Whether to delete temporary image files after conversion
+
+        Returns:
+            Path to generated MIDI file
+        """
+        from .utils import PDFHandler
+
+        # Check if PDF support is available
+        if not PDFHandler.is_pdf_supported():
+            raise ImportError(
+                "PDF support requires pdf2image library. "
+                "Install it with: pip install pdf2image\n"
+                "Note: pdf2image also requires poppler to be installed on your system."
+            )
+
+        print(f"Converting PDF '{pdf_path}' to MIDI...")
+
+        # Convert PDF to images
+        try:
+            image_paths = PDFHandler.pdf_to_images(pdf_path, dpi=dpi)
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract images from PDF: {e}")
+
+        if not image_paths:
+            raise ValueError("No pages could be extracted from PDF")
+
+        # Convert the extracted images to MIDI
+        try:
+            result = self.convert_multipage(
+                image_paths,
+                output_midi_path,
+                save_intermediate=save_intermediate
+            )
+        finally:
+            # Clean up temporary image files
+            if cleanup_temp:
+                print("\nCleaning up temporary files...")
+                PDFHandler.cleanup_temp_images(image_paths)
+
+        return result
+
     def _save_intermediate_image(self, image, output_midi_path: str, suffix: str):
         """Save intermediate processing image for debugging"""
         import cv2
